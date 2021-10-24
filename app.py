@@ -1,6 +1,9 @@
+from io import StringIO
+import json
 from ntpath import join
 from flask import Flask, request, render_template, redirect, url_for
 from datetime import datetime
+import requests
 import re
 import tempfile
 
@@ -22,6 +25,10 @@ session = boto3.Session('accessKey', 'secretKey')
 
 
 
+myurlAPI = 'https://jph3r2ps9e.execute-api.sa-east-1.amazonaws.com/Prod'
+
+
+
 # REGIAO API
 @app.route("/upload", methods=['POST'])
 def teste_upload():
@@ -33,6 +40,14 @@ def teste_upload():
 def download():
     receive_MessageSqs()
     return "Download feito"
+
+@app.route("/upload-file-presignedurl", methods=['GET'])
+def upload_file_presignedurl():
+    result = GetFilePresignedUrl()
+    if (UploadFileS3(result['presigned_url'])):
+        SendRequestOCr(result['filename_after_upload'])
+   
+    return "Envio de Imagem para OCR Comcluido"
 
 def upload_file(arquivo):
     s3_client = session.client("s3")
@@ -108,6 +123,34 @@ def receive_MessageSqs():
   )
   print('Received and deleted message: %s' % message)
 
+def GetFilePresignedUrl():
+    myurl = myurlAPI
+    resultData = requests.get(myurl)
+    if resultData.status_code == 200:
+        resultJson = json.loads(resultData.text)
+        print(resultJson['presigned_url'])
+        return resultJson
+    else:
+        print('Erro ao fazer requisição')
 
+def UploadFileS3(url):
+    payload = open("C:\\Users\\afern\\Downloads\\dadosCadastrais.pdf", 'rb')
+    headers = {'Content-Type': 'application/pdf'}
+    response = requests.request("PUT", url, headers=headers, data=payload)
+    if response.status_code == 200:
+        print('Upload feito com sucesso')
+        return True
+    else:
+        print('Erro ao fazer upload')
+        return False
 
-
+def SendRequestOCr(payload):
+    payload = { "urlS3": payload}
+    response = requests.post(myurlAPI, json=payload)
+    if response.status_code == 200:
+        print(response.text)
+        print('Solicitação para OCR feita com sucesso')
+        return True
+    else:
+        print('Erro ao fazer solicitação para OCR')
+        return False
