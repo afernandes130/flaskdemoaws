@@ -47,7 +47,7 @@ def upload_file_presignedurl():
     if (UploadFileS3(result['presigned_url'])):
         SendRequestOCr(result['filename_after_upload'])
    
-    return "Envio de Imagem para OCR Comcluido"
+    return "Envio de Imagem para OCR Concluido"
 
 def upload_file(arquivo):
     s3_client = session.client("s3")
